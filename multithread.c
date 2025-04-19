@@ -1,29 +1,49 @@
-#include <stdio.h>
 #include <pthread.h>
-#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>  // for sleep()
 
-void* task(void* arg) {
-    char* name = (char*)arg;
-    printf("Task %s started\n", name);
-    sleep(2);
-    printf("Task %s completed\n", name);
+#define NUM_THREADS 5
+
+pthread_mutex_t lock;
+
+void* print_count(void* thread_id) {
+    long tid = (long) thread_id;
+
+    pthread_mutex_lock(&lock);
+    printf("Thread %ld is starting...\n", tid);
+    pthread_mutex_unlock(&lock);
+
+    sleep(1);  // Simulate some work
+
+    pthread_mutex_lock(&lock);
+    printf("Thread %ld is ending...\n", tid);
+    pthread_mutex_unlock(&lock);
+
     return NULL;
 }
 
 int main() {
-    pthread_t thread1, thread2, thread3;
+    pthread_t threads[NUM_THREADS];
+    long t;
 
-    printf("Multi-threaded program started\n");
+    pthread_mutex_init(&lock, NULL);
 
-    pthread_create(&thread1, NULL, task, "A");
-    pthread_create(&thread2, NULL, task, "B");
-    pthread_create(&thread3, NULL, task, "C");
+    printf("Main: Program started\n");
 
-    pthread_join(thread1, NULL);
-    pthread_join(thread2, NULL);
-    pthread_join(thread3, NULL);
+    for (t = 0; t < NUM_THREADS; t++) {
+        if (pthread_create(&threads[t], NULL, print_count, (void*)t)) {
+            printf("Error: Unable to create thread %ld\n", t);
+            exit(-1);
+        }
+    }
 
-    printf("Multi-threaded program finished\n");
+    for (t = 0; t < NUM_THREADS; t++) {
+        pthread_join(threads[t], NULL);
+    }
+
+    pthread_mutex_destroy(&lock);
+
+    printf("Main: All threads have finished.\n");
     return 0;
 }
-
